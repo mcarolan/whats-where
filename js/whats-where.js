@@ -13,7 +13,7 @@ services = [
 	]},
 	{ "vipi": [
 		{ "UAT": "http://localhost:9080/meta/version/version.json" },
-		{ "Live": "http://localhost:9081/meta/version/version.json" }
+		{ "Live": "http://localhost:9080/meta/version/version.json" }
 	]},
 	{ "production ingester": [
 		{ "UAT": "http://localhost:9080/meta/version/version.json" },
@@ -38,8 +38,12 @@ function extractServiceVersion(data) {
 	return data.version;
 }
 
-function shouldHighlight(service) {
+function shouldHighlightInformation(service) {
 	return service["UAT"] != null && service["Live"] != null && service["UAT"] != service["Live"];
+}
+
+function shouldHighlightDanger(service) {
+	return service["UAT"] == null || service["Live"] == null;
 }
 
 function makeCssClassName(str) {
@@ -62,8 +66,14 @@ function drawModel() {
 			environmentCell.html(value ? value : '-');
 		});
 
-		if (shouldHighlight(model[serviceName])) {
+		row.removeClass('info');
+		if (shouldHighlightInformation(model[serviceName])) {
 			row.addClass('info');
+		}
+
+		row.removeClass('danger');
+		if (shouldHighlightDanger(model[serviceName])) {
+			row.addClass('danger');
 		}
 	});
 }
