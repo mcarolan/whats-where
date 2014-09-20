@@ -29,7 +29,7 @@ function updateDashboard() {
 
 		//decide whether to highlight row
 		if (uatVersion != null && liveVersion != null && uatVersion != liveVersion) {
-			$('#service' + i).addClass('info');
+			$('#service' + i).addClass('warning');
 		}
 	}
 }
