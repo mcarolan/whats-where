@@ -93,7 +93,7 @@ $(document).ready(function() {
 	//and add a row to the tbody
 	$.each(services, function (ignored, service) {
 		var serviceName = Object.keys(service)[0];
-		cells = [ '<td class="serviceName"></td>' ];
+		cells = [ '<th class="serviceName"></th>' ];
 
 		$.each(environmentSet, function (ignored, environmentName) {
 			model[serviceName] = {};
