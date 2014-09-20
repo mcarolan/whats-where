@@ -1,65 +1,87 @@
-services = [
-	[ "http://localhost:8080/meta/version/version.json", "http://localhost:8081/meta/version/version.json" ],
-	[ "http://localhost:9080/meta/version/version.json", "http://localhost:9081/meta/version/version.json" ]
-];
+services = {
+	"wowfx": {
+		"UAT": "http://localhost:8080/meta/version/version.json",
+		"Live": "http://localhost:8081/meta/version/version.json"
+	},
+	"abba": {
+		"UAT": "http://localhost:9080/meta/version/version.json",
+		"Live": "http://localhost:9081/meta/version/version.json"
+	}
+};
 
-versions = [];
+model = {};
 
-function extractServiceName(data) {
-	return data.name;
-}
+//work out the set of environments across all services
+var environmentSet = {}
+$.each(services, function (serviceName, environments) {
+	$.each(environments, function (environmentName, environmentUrl) {
+	environmentSet[environmentName] = true;
+	});
+});
 
 function extractServiceVersion(data) {
 	return data.version;
 }
 
-function updateDashboard() {
-	for (var i = 0; i < services.length; ++i) {
-		var serviceNameElem = $("#serviceName" + i);
-		var uatVersionElem = $("#uatVersion" + i);
-		var liveVersionElem = $("#liveVersion" + i);
+function shouldHighlight(service) {
+	return service["UAT"] != null && service["Live"] != null && service["UAT"] != service["Live"];
+}
 
-		var serviceName = versions[i][0];
-		var uatVersion = versions[i][1];
-		var liveVersion = versions[i][2];
+function drawModel() {
+	$.each(services, function(serviceName, ignored) {
+		var row = $('#dashboard .' + serviceName + 'Service');
+		var serviceNameCell = $('.serviceName', row);
 
-		serviceNameElem.html(serviceName ? serviceName : "?");
-		uatVersionElem.html(uatVersion ? uatVersion : "-");
-		liveVersionElem.html(liveVersion ? liveVersion : "-");
+		serviceNameCell.html(serviceName);
 
-		//decide whether to highlight row
-		if (uatVersion != null && liveVersion != null && uatVersion != liveVersion) {
-			$('#service' + i).addClass('warning');
+		$.each(environmentSet, function(environmentName, ignored) {
+			var environmentCell = $('.' + environmentName + 'Environment', row);
+			var value = model[serviceName][environmentName];
+			environmentCell.html(value ? value : '-');
+		});
+
+		if (shouldHighlight(model[serviceName])) {
+			console.log(model[serviceName]);
+			row.addClass('warning');
 		}
-	}
+	});
 }
 
 $(document).ready(function() {
-	//create a table row for each service
-	for (var i = 0; i < services.length; ++i) {
-		versions.push([null, null, null]);
-		var initialTableRow = '<tr id="service' + i + '"><th id="serviceName' + i + '"></th><td id="uatVersion' + i + '"></td><td id="liveVersion' + i + '"></td></tr>';
-		$('#dashboard tbody').append(initialTableRow);
-	}
+	//crearte the table heading
+	var tableHeadings = [ '<th>Service</th>' ];
 
-	updateDashboard();
+	$.each(environmentSet, function (environment, ignored) {
+		tableHeadings.push('<th>' + environment + '</th>');
+	});
 
-	for (var i = 0; i < services.length; ++i) {
-		(function (i) {
-			var uatUrl = services[i][0]
-			var liveUrl = services[i][1];
+	var headingRow = '<tr>' + tableHeadings.join('') + '</tr>';
+	$('#dashboard thead').append(headingRow);
 
-			$.get(uatUrl, function(data) {
-				versions[i][0] = extractServiceName(data);
-				versions[i][1] = extractServiceVersion(data);
-				updateDashboard();
-			});
+	//initialize the model for each service
+	//and add a row to the tbody
+	$.each(services, function (serviceName, ignored) {
+		cells = [ '<td class="serviceName"></td>' ];
 
-			$.get(liveUrl, function(data) {
-				versions[i][0] = extractServiceName(data);
-				versions[i][2] = extractServiceVersion(data);
-				updateDashboard();
-			});
-		})(i);
-	}
+		$.each(environmentSet, function (environmentName, ignored) {
+			model[serviceName] = {};
+			cells.push('<td class="' + environmentName + 'Environment"></td>')
+		});
+
+		var serviceRow = '<tr class="' + serviceName + 'Service">' + cells.join('') + '</tr>';
+		$('#dashboard tbody').append(serviceRow);
+	});
+
+	drawModel();
+
+	$.each(services, function (serviceName, environments) {
+		$.each(environments, function (environmentName, environmentUrl) {
+			(function (serviceName, environmentName, environmentUrl) {
+				$.get(environmentUrl, function(data) {
+					model[serviceName][environmentName] = extractServiceVersion(data);
+					drawModel();
+				});
+			})(serviceName, environmentName, environmentUrl);
+		});
+	});
 });
